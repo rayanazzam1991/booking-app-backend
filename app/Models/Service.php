@@ -15,7 +15,7 @@ class Service extends Model
     public function professionals()
     {
         return $this->belongsToMany(HealthProfessional::class, 'health_professional_services')
-            ->withPivot(['price', 'duration_minutes', 'notes'])
+            ->withPivot(['price', 'duration_minutes', 'notes','status'])
             ->withTimestamps();
     }
 }
