@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
-    /** @use HasFactory<\Database\Factories\ServicesFactory> */
+    /** @use HasFactory<\Database\Factories\ServiceFactory> */
     use HasFactory;
 
     protected $guarded = [];
