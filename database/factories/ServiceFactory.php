@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Service>
  */
-class ServicesFactory extends Factory
+class ServiceFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -17,7 +17,10 @@ class ServicesFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'name' => fake()->words(2, true),
+            'description' => fake()->sentence(),
+            'price' => fake()->randomFloat(2, 50, 300),
+            'duration_minutes' => fake()->numberBetween(15, 120),
         ];
     }
 }

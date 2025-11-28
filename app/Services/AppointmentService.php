@@ -8,7 +8,6 @@ use App\Jobs\SendAppointmentConfirmationEmailJob;
 use App\Models\Appointment;
 use App\Models\Service;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 
 class AppointmentService
 {
@@ -20,19 +19,20 @@ class AppointmentService
         $service = Service::query()->findOrFail($appointmentDTO->serviceId);
 
         $requestedStart = Carbon::parse($appointmentDTO->scheduledAt);
-        $requestedEnd = (clone $requestedStart)->addMinutes($service->duration);
+        $requestedEnd = (clone $requestedStart)->addMinutes(max($service->duration_minutes ?? 0, 0));
 
+        $hasOverlap = Appointment::query()
+            ->with('service')
+            ->where('health_professional_id', $appointmentDTO->healthProfessionalId)
+            ->get()
+            ->contains(function (Appointment $appointment) use ($requestedStart, $requestedEnd) {
+                $existingStart = Carbon::parse($appointment->scheduled_at);
+                $existingEnd = (clone $existingStart)->addMinutes(max($appointment->service->duration_minutes ?? 0, 0));
 
+                return $this->overlaps($requestedStart, $requestedEnd, $existingStart, $existingEnd);
+            });
 
-        $exists = Appointment::query()->where('health_professional_id', $appointmentDTO->healthProfessionalId)
-            ->join('services', 'appointments.service_id', '=', 'services.id')
-            ->where(function ($q) use ($requestedStart, $requestedEnd) {
-                $q->where('appointments.scheduled_at', '<=', $requestedEnd)
-                    ->whereRaw('DATE_ADD(appointments.scheduled_at, INTERVAL services.duration_minutes MINUTE) >= ?', [$requestedStart]);
-            })
-            ->exists();
-
-        if ($exists) {
+        if ($hasOverlap) {
             throw new AppointmentAlreadyBookedException;
         }
 
@@ -46,5 +46,10 @@ class AppointmentService
     private function notifyCustomerWithAppointment(Appointment $appointment)
     {
         SendAppointmentConfirmationEmailJob::dispatch($appointment);
+    }
+
+    private function overlaps(Carbon $requestedStart, Carbon $requestedEnd, Carbon $existingStart, Carbon $existingEnd): bool
+    {
+        return $requestedStart < $existingEnd && $requestedEnd > $existingStart;
     }
 }
