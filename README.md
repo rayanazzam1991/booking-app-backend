@@ -17,7 +17,6 @@ This project is a minimal appointment-booking backend built with Laravel. It exp
 ## Requirements
 - PHP 8.2+
 - Composer
-- Node.js 18+ and npm (only required if you plan to rebuild the front-end assets)
 - MySQL 8 (or run the included Docker services via Sail)
 
 ## Local setup with Composer
@@ -35,12 +34,7 @@ This project is a minimal appointment-booking backend built with Laravel. It exp
    ```bash
    php artisan migrate --seed
    ```
-5. **(Optional) Install/build assets** if you need the compiled front-end:
-   ```bash
-   npm install
-   npm run build
-   ```
-6. **Run the app locally**:
+5. **Run the app locally**:
    ```bash
    php artisan serve --port=8000
    php artisan queue:work   # in a separate terminal to process confirmation jobs
@@ -118,6 +112,7 @@ A successful response returns `201` with the appointment payload and message `"A
   ```bash
   php artisan test --env=testing
   ```
+- **Test Api endpoint** `httpRequests/bookAppointment.http` — ready-to-use HTTP request example for local testing.
 
 ## Project structure highlights
 - `routes/api.php` — API endpoints for services, professionals, and appointment booking.
