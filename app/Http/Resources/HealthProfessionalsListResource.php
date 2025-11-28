@@ -17,6 +17,10 @@ class HealthProfessionalsListResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->user->name,
+            'license_number' => $this->license_number,
+            'speciality' => $this->speciality,
+            'pivot' => HealthProfessionalServicesListResource::make($this->pivot),
+
         ];
     }
 }
