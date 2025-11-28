@@ -1,0 +1,11 @@
+### Send POST request to book Appointment
+POST http://127.0.0.1:8001/api/appointment
+Content-Type: application/json
+Accept: application/json
+
+{
+    "service_id": 1,
+    "health_professional_id": 2,
+    "customer_email": "test@test.com",
+    "date":"2025-12-17T12:42"
+}

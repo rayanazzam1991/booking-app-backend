@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DTOs\CreateAppointmentDTO;
 use App\Exceptions\AppointmentAlreadyBookedException;
+use App\Jobs\SendAppointmentConfirmationEmailJob;
 use App\Models\Appointment;
 use App\Models\Service;
 use Carbon\Carbon;
@@ -21,7 +22,7 @@ class AppointmentService
         $requestedStart = Carbon::parse($appointmentDTO->scheduledAt);
         $requestedEnd = (clone $requestedStart)->addMinutes($service->duration);
 
-        Log::info('times', [$requestedStart, $requestedEnd]);
+
 
         $exists = Appointment::query()->where('health_professional_id', $appointmentDTO->healthProfessionalId)
             ->join('services', 'appointments.service_id', '=', 'services.id')
@@ -35,6 +36,15 @@ class AppointmentService
             throw new AppointmentAlreadyBookedException;
         }
 
-        return Appointment::query()->create($appointmentDTO->toArray());
+        $appointment =  Appointment::query()->create($appointmentDTO->toArray());
+
+        $this->notifyCustomerWithAppointment($appointment);
+
+        return $appointment;
+    }
+
+    private function notifyCustomerWithAppointment(Appointment $appointment)
+    {
+        SendAppointmentConfirmationEmailJob::dispatch($appointment);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DTOs\CreateAppointmentDTO;
+use App\Exceptions\AppointmentAlreadyBookedException;
 use App\Helpers\ApiResponse;
 use App\Http\Requests\CreateAppointmentRequest;
 use App\Http\Resources\AppointmentResource;
@@ -16,6 +17,9 @@ class AppointmentController extends Controller
         private readonly AppointmentService $appointmentService
     ) {}
 
+    /**
+     * @throws AppointmentAlreadyBookedException
+     */
     public function create(CreateAppointmentRequest $appointmentRequest): JsonResponse
     {
         $dataFromRequest = CreateAppointmentDTO::fromRequest($appointmentRequest->validated());
