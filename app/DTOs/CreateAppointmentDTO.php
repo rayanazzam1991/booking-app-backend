@@ -10,7 +10,7 @@ readonly class CreateAppointmentDTO
         public int $serviceId,
         public int $healthProfessionalId,
         public string $scheduledAt,
-        public string $customerEemail,
+        public string $customerEmail,
     ) {}
 
     /**
@@ -22,7 +22,7 @@ readonly class CreateAppointmentDTO
             serviceId: (int) $data['service_id'],
             healthProfessionalId: (int) $data['health_professional_id'],
             scheduledAt: $data['date'],
-            customerEemail: $data['email'],
+            customerEmail: $data['customer_email'],
         );
     }
 
@@ -35,7 +35,7 @@ readonly class CreateAppointmentDTO
             'service_id' => $this->serviceId,
             'health_professional_id' => $this->healthProfessionalId,
             'scheduled_at' => $this->scheduledAt,
-            'customer_email' => $this->customerEemail,
+            'customer_email' => $this->customerEmail,
         ];
     }
 }

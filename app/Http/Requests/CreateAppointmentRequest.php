@@ -11,7 +11,7 @@ class CreateAppointmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,10 @@ class CreateAppointmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'service_id' => ['required', 'exists:services,id'],
+            'health_professional_id' => ['required', 'exists:health_professionals,id'],
+            'customer_email' => ['required', 'email'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
         ];
     }
 }

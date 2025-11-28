@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\HealthProfessionalStatus;
 use App\Models\HealthProfessional;
 use App\Models\Service;
 use Illuminate\Database\Migrations\Migration;
@@ -24,9 +25,10 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             // Pivot fields
-            $table->decimal('price', 10, 2)->nullable();  // override service price
-            $table->integer('duration_minutes')->nullable(); // override service duration
-            $table->text('notes')->nullable(); // optional notes
+            $table->decimal('price', 10, 2)->nullable();
+            $table->integer('duration_minutes')->nullable();
+            $table->text('notes')->nullable();
+            $table->string('status')->default(HealthProfessionalStatus::AVAILABLE->value);
 
             $table->timestamps();
         });
