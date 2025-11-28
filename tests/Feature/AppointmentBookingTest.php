@@ -1,7 +1,5 @@
 <?php
 
-namespace Tests\Feature;
-
 use App\Jobs\SendAppointmentConfirmationEmailJob;
 use App\Models\Appointment;
 use App\Models\HealthProfessional;
@@ -9,69 +7,94 @@ use App\Models\Service;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
-use Tests\TestCase;
 
-class AppointmentBookingTest extends TestCase
-{
-    use RefreshDatabase;
+uses(RefreshDatabase::class);
 
-    public function test_it_books_an_appointment_and_dispatches_confirmation(): void
-    {
-        Bus::fake();
+it('books an appointment and queues a confirmation email job', function () {
+    Bus::fake();
 
-        $service = Service::factory()->create(['duration_minutes' => 30]);
-        $professional = HealthProfessional::factory()->create();
-        $scheduledAt = Carbon::now()->addDay()->setTime(9, 0)->format('Y-m-d H:i:s');
+    $service = Service::factory()->create([
+        'duration_minutes' => 30,
+    ]);
+    $professional = HealthProfessional::factory()->create();
+    $scheduledAt = Carbon::now()->addDay()->setTime(10, 0);
 
-        $response = $this->postJson('/api/appointment', [
-            'service_id' => $service->id,
-            'health_professional_id' => $professional->id,
-            'customer_email' => 'customer@example.com',
-            'date' => $scheduledAt,
+    $response = $this->postJson('/api/appointment', [
+        'service_id' => $service->id,
+        'health_professional_id' => $professional->id,
+        'customer_email' => 'patient@example.com',
+        'date' => $scheduledAt->toDateTimeString(),
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Appointment created successfully',
+        ])
+        ->assertJsonPath('data.customer_email', 'patient@example.com')
+        ->assertJsonPath('data.health_professional_id', $professional->id)
+        ->assertJsonPath('data.service_id', $service->id);
+
+    $this->assertDatabaseHas('appointments', [
+        'service_id' => $service->id,
+        'health_professional_id' => $professional->id,
+        'customer_email' => 'patient@example.com',
+        'scheduled_at' => $scheduledAt->toDateTimeString(),
+    ]);
+
+    $appointment = Appointment::first();
+
+    Bus::assertDispatched(SendAppointmentConfirmationEmailJob::class, function ($job) use ($appointment) {
+        return $job->appointment->is($appointment);
+    });
+});
+
+it('prevents booking a slot that overlaps an existing appointment', function () {
+    $service = Service::factory()->create([
+        'duration_minutes' => 45,
+    ]);
+    $professional = HealthProfessional::factory()->create();
+
+    $existingStart = Carbon::now()->addDay()->setTime(9, 0);
+
+    Appointment::factory()->create([
+        'service_id' => $service->id,
+        'health_professional_id' => $professional->id,
+        'scheduled_at' => $existingStart->toDateTimeString(),
+    ]);
+
+    $response = $this->postJson('/api/appointment', [
+        'service_id' => $service->id,
+        'health_professional_id' => $professional->id,
+        'customer_email' => 'second@example.com',
+        'date' => $existingStart->copy()->addMinutes(15)->toDateTimeString(),
+    ]);
+
+    $response
+        ->assertStatus(422)
+        ->assertJson([
+            'success' => false,
+            'message' => 'This appointment is already booked.',
         ]);
 
-        $response->assertCreated()
-            ->assertJsonFragment(['message' => 'Appointment created successfully'])
-            ->assertJsonPath('data.service_id', $service->id)
-            ->assertJsonPath('data.health_professional_id', $professional->id)
-            ->assertJsonPath('data.customer_email', 'customer@example.com');
+    $this->assertDatabaseCount('appointments', 1);
+});
 
-        $this->assertDatabaseHas('appointments', [
-            'service_id' => $service->id,
-            'health_professional_id' => $professional->id,
-            'customer_email' => 'customer@example.com',
-            'scheduled_at' => $scheduledAt,
+it('validates required appointment details', function () {
+    $response = $this->postJson('/api/appointment', [
+        'service_id' => null,
+        'health_professional_id' => null,
+        'customer_email' => 'not-an-email',
+        'date' => Carbon::now()->subDay()->toDateTimeString(),
+    ]);
+
+    $response
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'service_id',
+            'health_professional_id',
+            'customer_email',
+            'date',
         ]);
-
-        Bus::assertDispatched(SendAppointmentConfirmationEmailJob::class, function ($job) {
-            return $job->appointment instanceof Appointment
-                && $job->appointment->customer_email === 'customer@example.com';
-        });
-    }
-
-    public function test_it_blocks_overlapping_appointments_for_the_same_professional(): void
-    {
-        Bus::fake();
-
-        $service = Service::factory()->create(['duration_minutes' => 60]);
-        $professional = HealthProfessional::factory()->create();
-
-        Appointment::factory()->create([
-            'service_id' => $service->id,
-            'health_professional_id' => $professional->id,
-            'scheduled_at' => '2025-01-01 10:00:00',
-        ]);
-
-        $response = $this->postJson('/api/appointment', [
-            'service_id' => $service->id,
-            'health_professional_id' => $professional->id,
-            'customer_email' => 'customer@example.com',
-            'date' => '2025-01-01 10:30:00',
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonFragment(['message' => 'This appointment is already booked.']);
-
-        $this->assertDatabaseCount('appointments', 1);
-    }
-}
+});

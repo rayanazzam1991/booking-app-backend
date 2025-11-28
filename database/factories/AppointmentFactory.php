@@ -19,13 +19,13 @@ class AppointmentFactory extends Factory
      */
     public function definition(): array
     {
-        $scheduledAt = Carbon::now()->addDays(2)->setTime(10, 0);
+        $scheduledAt = Carbon::instance($this->faker->dateTimeBetween('+1 day', '+2 weeks'));
 
         return [
             'service_id' => Service::factory(),
             'health_professional_id' => HealthProfessional::factory(),
             'scheduled_at' => $scheduledAt,
-            'customer_email' => fake()->safeEmail(),
+            'customer_email' => $this->faker->safeEmail(),
         ];
     }
 }

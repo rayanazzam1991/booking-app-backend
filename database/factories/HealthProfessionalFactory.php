@@ -19,8 +19,8 @@ class HealthProfessionalFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'speciality' => fake()->randomElement(['Cardiology', 'Dermatology', 'Physiotherapy']),
-            'license_number' => fake()->bothify('LIC-####'),
+            'speciality' => $this->faker->randomElement(['Dermatology', 'Pediatrics', 'Dentistry', 'Physical Therapy']),
+            'license_number' => $this->faker->bothify('LIC-#####'),
         ];
     }
 }

@@ -17,10 +17,10 @@ class ServiceFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->words(2, true),
-            'description' => fake()->sentence(),
-            'price' => fake()->randomFloat(2, 50, 300),
-            'duration_minutes' => fake()->numberBetween(15, 120),
+            'name' => $this->faker->words(3, true),
+            'description' => $this->faker->sentence(),
+            'price' => $this->faker->randomFloat(2, 50, 500),
+            'duration_minutes' => $this->faker->numberBetween(15, 120),
         ];
     }
 }
