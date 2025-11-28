@@ -25,7 +25,7 @@ class CreateAppointmentRequest extends FormRequest
             'service_id' => ['required', 'exists:services,id'],
             'health_professional_id' => ['required', 'exists:health_professionals,id'],
             'customer_email' => ['required', 'email'],
-            'date' => ['required', 'date', 'after_or_equal:today'],
+            'date' => ['required', 'date_format:Y-m-d H:i:s', 'after_or_equal:now'],
         ];
     }
 }
