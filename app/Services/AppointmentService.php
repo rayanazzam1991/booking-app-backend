@@ -43,7 +43,7 @@ class AppointmentService
         return $appointment;
     }
 
-    private function notifyCustomerWithAppointment(Appointment $appointment)
+    private function notifyCustomerWithAppointment(Appointment $appointment): void
     {
         SendAppointmentConfirmationEmailJob::dispatch($appointment);
     }

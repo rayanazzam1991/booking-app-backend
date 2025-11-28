@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignIdFor(User::class)
                 ->constrained('users')
                 ->onDelete('cascade');
+
             $table->string('speciality')->nullable();
             $table->string('license_number')->nullable();
             $table->timestamps();
