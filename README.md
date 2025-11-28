@@ -1,59 +1,128 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Appointment Booking API (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project is a minimal appointment-booking backend built with Laravel. It exposes an unauthenticated API for clients to browse services/health professionals and book a timeslot while logging a simulated confirmation email. The API meets the provided backend brief:
 
-## About Laravel
+> Build a minimal API to book an appointment. The endpoint must accept a `service_id`, `health_professional_id`, `date`, and customer `email`; persist the booking; and trigger a confirmation notification without actually sending an external email.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Table of contents
+- [Requirements](#requirements)
+- [Local setup with Composer](#local-setup-with-composer)
+- [Running with Laravel Sail (Docker)](#running-with-laravel-sail-docker)
+- [Environment and database](#environment-and-database)
+- [Queued mail + log verification](#queued-mail--log-verification)
+- [API usage](#api-usage)
+- [Testing](#testing)
+- [Project structure highlights](#project-structure-highlights)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Requirements
+- PHP 8.2+
+- Composer
+- Node.js 18+ and npm (only required if you plan to rebuild the front-end assets)
+- MySQL 8 (or run the included Docker services via Sail)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Local setup with Composer
+1. **Install PHP dependencies**
+   ```bash
+   composer install
+   ```
+2. **Create your environment file**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+3. **Configure your database credentials** in `.env` (`DB_*` variables) and create the database.
+4. **Run migrations and seeders** (seeds services and demo health professionals with pivot data):
+   ```bash
+   php artisan migrate --seed
+   ```
+5. **(Optional) Install/build assets** if you need the compiled front-end:
+   ```bash
+   npm install
+   npm run build
+   ```
+6. **Run the app locally**:
+   ```bash
+   php artisan serve --port=8000
+   php artisan queue:work   # in a separate terminal to process confirmation jobs
+   ```
 
-## Learning Laravel
+## Running with Laravel Sail (Docker)
+Laravel Sail is preconfigured via `compose.yaml` for PHP, MySQL, and Redis.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+1. **Copy environment and set Sail values** (e.g., `DB_PASSWORD`, `APP_PORT`, `FORWARD_DB_PORT`).
+2. **Install dependencies inside the container** (first run only):
+   ```bash
+   composer install
+   ```
+3. **Start the stack**:
+   ```bash
+   ./vendor/bin/sail up -d
+   ```
+4. **Run migrations and seeders** in the container:
+   ```bash
+   ./vendor/bin/sail artisan migrate --seed
+   ```
+5. **Queue worker** (needed for confirmation emails):
+   ```bash
+   ./vendor/bin/sail artisan queue:work
+   ```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Environment and database
+- `MAIL_MAILER` defaults to `log`, so outgoing mail is written to `storage/logs/laravel.log`.
+- `QUEUE_CONNECTION` defaults to `database`; migrations create the queue tables automatically.
+- Seed data includes:
+  - Four base services with durations/prices.
+  - Three health professionals linked to one or more services with pivot overrides for price/duration/notes.
 
-## Laravel Sponsors
+## Queued mail + log verification
+Confirmation notifications are dispatched to the queue (`SendAppointmentConfirmationEmailJob`) and sent through the log mailer. After booking:
+- Ensure a queue worker is running.
+- Inspect `storage/logs/laravel.log` for entries like `"Simulated email for appointment: <id>"` including recipient, service, professional, and schedule details.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## API usage
+### Create an appointment
+`POST /api/appointment`
 
-### Premium Partners
+Payload fields:
+- `service_id` (required, must exist)
+- `health_professional_id` (required, must exist)
+- `customer_email` (required, valid email)
+- `date` (required, ISO date/time string; must be today or later)
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Example `curl` (adjust host/port as needed):
+```bash
+curl -X POST "http://127.0.0.1:8000/api/appointment" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{
+    "service_id": 1,
+    "health_professional_id": 2,
+    "customer_email": "test@test.com",
+    "date": "2025-12-17T12:42"
+  }'
+```
+A successful response returns `201` with the appointment payload and message `"Appointment created successfully"`. If the timeslot for that professional overlaps with an existing appointment, the API raises a conflict-style error.
 
-## Contributing
+### Browse supporting data
+- `GET /api/services` — list services.
+- `GET /api/services/{service}/health_professionals` — professionals for a service.
+- `GET /api/health_professionals` — list professionals.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Testing
+- **Application tests via Composer script (uses Sail test runner):**
+  ```bash
+  composer test
+  ```
+  This runs `./vendor/bin/sail artisan test --env=testing`; ensure the Sail containers are up.
+- **Direct Laravel test runner (non-Docker):**
+  ```bash
+  php artisan test --env=testing
+  ```
 
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Project structure highlights
+- `routes/api.php` — API endpoints for services, professionals, and appointment booking.
+- `app/Http/Requests/CreateAppointmentRequest.php` — validation rules for booking.
+- `app/Services/AppointmentService.php` — availability check, persistence, and notification dispatch.
+- `app/Jobs/SendAppointmentConfirmationEmailJob.php` — logs + mails the confirmation.
+- `database/seeders/HealthProfessionalServiceSeeder.php` — seeds sample services and professionals.
+- `httpRequests/bookAppointment.http` — ready-to-use HTTP request example for local testing.
